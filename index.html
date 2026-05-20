@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notion Progress Widget - Minimal Blue</title>
+    <style>
+        /* Matches Notion's Dark Mode Background and Font */
+        body {
+            background-color: #191919;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .widget-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* The label on the left (e.g., "Year") */
+        .row-title {
+            width: 65px;
+            letter-spacing: 0.5px;
+            color: #a5a5a5; 
+        }
+
+        /* The background of the thin slider */
+        .progress-track {
+            width: 260px;
+            height: 6px; /* Makes the slider thin */
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin: 0 16px;
+            overflow: hidden;
+        }
+
+        /* The blue fill inside the slider */
+        .progress-fill {
+            height: 100%;
+            background-color: #0a84ff; /* Crisp Blue Color */
+            border-radius: 4px;
+            width: 0%; /* Set dynamically by JS */
+            transition: width 1s linear;
+        }
+
+        /* The percentage text on the right */
+        .row-percent {
+            width: 65px;
+            text-align: right;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-container">
+        <div class="progress-row">
+            <div class="row-title">Year</div>
+            <div class="progress-track"><div class="progress-fill" id="fill-year"></div></div>
+            <div class="row-percent" id="label-year">0%</div>
+        </div>
+        <div class="progress-row">
+            <div class="row-title">Month</div>
+            <div class="progress-track"><div class="progress-fill" id="fill-month"></div></div>
+            <div class="row-percent" id="label-month">0%</div>
+        </div>
+        <div class="progress-row">
+            <div class="row-title">Week</div>
+            <div class="progress-track"><div class="progress-fill" id="fill-week"></div></div>
+            <div class="row-percent" id="label-week">0%</div>
+        </div>
+        <div class="progress-row">
+            <div class="row-title">Day</div>
+            <div class="progress-track"><div class="progress-fill" id="fill-day"></div></div>
+            <div class="row-percent" id="label-day">0%</div>
+        </div>
+        <div class="progress-row">
+            <div class="row-title">Quarter</div>
+            <div class="progress-track"><div class="progress-fill" id="fill-quarter"></div></div>
+            <div class="row-percent" id="label-quarter">0%</div>
+        </div>
+    </div>
+
+    <script>
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        }
+
+        function updateProgress() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const date = now.getDate();
+            const dayOfWeek = now.getDay();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            // 1. Day Progress
+            const totalSecondsInDay = 24 * 60 * 60;
+            const passedSecondsInDay = (hours * 3600) + (minutes * 60) + seconds;
+            const dayPercent = (passedSecondsInDay / totalSecondsInDay) * 100;
+
+            // 2. Week Progress (Assuming Monday start)
+            const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+            const totalSecondsInWeek = 7 * totalSecondsInDay;
+            const passedSecondsInWeek = (adjustedDayOfWeek * totalSecondsInDay) + passedSecondsInDay;
+            const weekPercent = (passedSecondsInWeek / totalSecondsInWeek) * 100;
+
+            // 3. Month Progress
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const totalSecondsInMonth = daysInMonth * totalSecondsInDay;
+            const passedSecondsInMonth = ((date - 1) * totalSecondsInDay) + passedSecondsInDay;
+            const monthPercent = (passedSecondsInMonth / totalSecondsInMonth) * 100;
+
+            // 4. Year Progress
+            const daysInYear = isLeapYear(year) ? 366 : 365;
+            const startOfYear = new Date(year, 0, 1);
+            const passedMillisecondsInYear = now - startOfYear;
+            const yearPercent = (passedMillisecondsInYear / (daysInYear * 24 * 60 * 60 * 1000)) * 100;
+
+            // 5. Quarter Progress
+            const quarter = Math.floor(month / 3);
+            const startOfQuarter = new Date(year, quarter * 3, 1);
+            const endOfQuarter = new Date(year, (quarter + 1) * 3, 0);
+            const totalDaysInQuarter = Math.round((endOfQuarter - startOfQuarter) / (1000 * 60 * 60 * 24)) + 1;
+            const passedMillisecondsInQuarter = now - startOfQuarter;
+            const quarterPercent = (passedMillisecondsInQuarter / (totalDaysInQuarter * 24 * 60 * 60 * 1000)) * 100;
+
+            // Update DOM with 2 decimal places
+            const updateElement = (id, percent) => {
+                const formattedPercent = percent.toFixed(2);
+                document.getElementById(`fill-${id}`).style.width = `${formattedPercent}%`;
+                document.getElementById(`label-${id}`).innerText = `${formattedPercent}%`;
+            };
+
+            updateElement('year', yearPercent);
+            updateElement('month', monthPercent);
+            updateElement('week', weekPercent);
+            updateElement('day', dayPercent);
+            updateElement('quarter', quarterPercent);
+        }
+
+        // Initialize and run every second for real-time tracking
+        updateProgress();
+        setInterval(updateProgress, 1000);
+    </script>
+</body>
+</html>
